@@ -123,7 +123,7 @@ export function createServer(): McpServer {
         });
 
         // 检查每个结果的成功状态
-        const allSuccessful = editsResult.updateFeatureResults.every(result => result.success);
+        const allSuccessful = editsResult.updateFeatureResults.every((result: any) => result.success);
         const hasResults = editsResult.updateFeatureResults.length > 0;
 
         return {
@@ -206,7 +206,7 @@ export function createServer(): McpServer {
         });
 
         // 检查每个结果的成功状态
-        const allSuccessful = editsResult.updateFeatureResults.every(result => result.success);
+        const allSuccessful = editsResult.updateFeatureResults.every((result: any) => result.success);
         const hasResults = editsResult.updateFeatureResults.length > 0;
 
         return {
