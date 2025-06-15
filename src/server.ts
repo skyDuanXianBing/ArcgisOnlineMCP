@@ -17,40 +17,65 @@ export function createServer(): McpServer {
     'query',
     'query Arcgis Online FeatureLayer Element',
     {
-      url: z.string().describe('url'),
-      apikey: z.string().describe('api key'),
-      where: z.string().default("1=1").describe('where'),
+      url: z.string().url().describe('Feature layer URL'),
+      apikey: z.string().min(1).describe('API key'),
+      where: z.string().default("1=1").describe('WHERE clause for filtering features'),
     },
     async ({ url, apikey, where }) => {
-      esriConfig.apiKey = apikey
-      const featureLayer = new FeatureLayer({
-        url: url,
-      })
-      const featureQueryResult = await featureLayer.queryFeatures({
-        where: where,
-        outFields: ['*'],
-        returnGeometry: true,
-      })
+      try {
+        // 验证输入参数
+        if (!url || !apikey) {
+          throw new Error('URL and API key are required');
+        }
 
-      // 提取所有要素的完整属性
-      const features = featureQueryResult.features || [];
-      const allFeatureAttributes = features.map((feature: any) => {
+        esriConfig.apiKey = apikey;
+        const featureLayer = new FeatureLayer({
+          url: url,
+        });
+
+        // 等待图层加载以验证URL有效性
+        await featureLayer.load();
+
+        const featureQueryResult = await featureLayer.queryFeatures({
+          where: where,
+          outFields: ['*'],
+          returnGeometry: true,
+        });
+
+        // 提取所有要素的完整属性
+        const features = featureQueryResult.features || [];
+        const allFeatureAttributes = features.map((feature: any) => {
+          return {
+            attributes: feature.attributes || {},
+            geometry: feature.geometry || null
+          };
+        });
+
         return {
-          attributes: feature.attributes || {},
-          geometry: feature.geometry || null
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: true,
+                totalFeatures: features.length,
+                features: allFeatureAttributes
+              }, null, 2)
+            }
+          ]
         };
-      });
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              totalFeatures: features.length,
-              features: allFeatureAttributes
-            }, null, 2)
-          }
-        ]
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error occurred',
+                details: 'Failed to query features from the layer'
+              }, null, 2)
+            }
+          ]
+        };
       }
     }
   )
@@ -60,42 +85,73 @@ export function createServer(): McpServer {
     'updateFeatureAttributes',
     'Update only the attributes of an existing feature in an ArcGIS Online FeatureLayer',
     {
-      url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
-      objectId: z.number().describe('Object ID of the feature to update'),
+      url: z.string().url().describe('Feature layer URL'),
+      apikey: z.string().min(1).describe('API key'),
+      objectId: z.number().positive().describe('Object ID of the feature to update'),
       attributes: z.record(z.any()).describe('Updated feature attributes')
     },
     async ({ url, apikey, objectId, attributes }) => {
-      esriConfig.apiKey = apikey;
-      const featureLayer = new FeatureLayer({
-        url: url,
-      });
-
-      // Create a graphic with the provided objectId and attributes (no geometry)
-      const graphic = new Graphic({
-        attributes: {
-          ...attributes,
-          [featureLayer.objectIdField]: objectId // Ensure the objectId is included
+      try {
+        if (!url || !apikey || !objectId || !attributes) {
+          throw new Error('URL, API key, object ID, and attributes are required');
         }
-        // No geometry property - only updating attributes
-      });
 
-      // Apply the edits to update the feature
-      const editsResult = await featureLayer.applyEdits({
-        updateFeatures: [graphic]
-      });
+        esriConfig.apiKey = apikey;
+        const featureLayer = new FeatureLayer({
+          url: url,
+        });
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: editsResult.updateFeatureResults.length > 0,
-              results: editsResult.updateFeatureResults
-            }, null, 2)
+        // 等待图层加载以获取objectIdField
+        await featureLayer.load();
+
+        if (!featureLayer.objectIdField) {
+          throw new Error('Unable to determine object ID field for this layer');
+        }
+
+        // Create a graphic with the provided objectId and attributes (no geometry)
+        const graphic = new Graphic({
+          attributes: {
+            ...attributes,
+            [featureLayer.objectIdField]: objectId // Ensure the objectId is included
           }
-        ]
-      };
+          // No geometry property - only updating attributes
+        });
+
+        // Apply the edits to update the feature
+        const editsResult = await featureLayer.applyEdits({
+          updateFeatures: [graphic]
+        });
+
+        // 检查每个结果的成功状态
+        const allSuccessful = editsResult.updateFeatureResults.every((result: any) => result.success);
+        const hasResults = editsResult.updateFeatureResults.length > 0;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: hasResults && allSuccessful,
+                totalUpdated: editsResult.updateFeatureResults.length,
+                results: editsResult.updateFeatureResults
+              }, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error occurred',
+                details: 'Failed to update feature attributes'
+              }, null, 2)
+            }
+          ]
+        };
+      }
     }
   );
 
@@ -104,50 +160,81 @@ export function createServer(): McpServer {
     'updatePointGeometry',
     'Update only the geometry of an existing point feature using latitude and longitude',
     {
-      url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
-      objectId: z.number().describe('Object ID of the feature to update'),
-      latitude: z.number().describe('Latitude (Y coordinate)'),
-      longitude: z.number().describe('Longitude (X coordinate)'),
-      wkid: z.number().default(4326).describe('Spatial reference WKID (default: 4326 WGS84)')
+      url: z.string().url().describe('Feature layer URL'),
+      apikey: z.string().min(1).describe('API key'),
+      objectId: z.number().positive().describe('Object ID of the feature to update'),
+      latitude: z.number().min(-90).max(90).describe('Latitude (Y coordinate)'),
+      longitude: z.number().min(-180).max(180).describe('Longitude (X coordinate)'),
+      wkid: z.number().positive().default(4326).describe('Spatial reference WKID (default: 4326 WGS84)')
     },
     async ({ url, apikey, objectId, latitude, longitude, wkid }) => {
-      esriConfig.apiKey = apikey;
-      const featureLayer = new FeatureLayer({
-        url: url,
-      });
+      try {
+        if (!url || !apikey || !objectId || latitude === undefined || longitude === undefined) {
+          throw new Error('URL, API key, object ID, latitude, and longitude are required');
+        }
 
-      // Create a point geometry from latitude and longitude
-      const point = new Point({
-        x: longitude,
-        y: latitude,
-        spatialReference: { wkid: wkid }
-      });
+        esriConfig.apiKey = apikey;
+        const featureLayer = new FeatureLayer({
+          url: url,
+        });
 
-      // Create a graphic with the provided objectId and point geometry (no attributes)
-      const graphic = new Graphic({
-        attributes: {
-          [featureLayer.objectIdField]: objectId // Only include the objectId
-        },
-        geometry: point
-      });
+        // 等待图层加载以获取objectIdField
+        await featureLayer.load();
 
-      // Apply the edits to update the feature
-      const editsResult = await featureLayer.applyEdits({
-        updateFeatures: [graphic]
-      });
+        if (!featureLayer.objectIdField) {
+          throw new Error('Unable to determine object ID field for this layer');
+        }
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: editsResult.updateFeatureResults.length > 0,
-              results: editsResult.updateFeatureResults
-            }, null, 2)
-          }
-        ]
-      };
+        // Create a point geometry from latitude and longitude
+        const point = new Point({
+          x: longitude,
+          y: latitude,
+          spatialReference: { wkid: wkid }
+        });
+
+        // Create a graphic with the provided objectId and point geometry (no attributes)
+        const graphic = new Graphic({
+          attributes: {
+            [featureLayer.objectIdField]: objectId // Only include the objectId
+          },
+          geometry: point
+        });
+
+        // Apply the edits to update the feature
+        const editsResult = await featureLayer.applyEdits({
+          updateFeatures: [graphic]
+        });
+
+        // 检查每个结果的成功状态
+        const allSuccessful = editsResult.updateFeatureResults.every((result: any) => result.success);
+        const hasResults = editsResult.updateFeatureResults.length > 0;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: hasResults && allSuccessful,
+                totalUpdated: editsResult.updateFeatureResults.length,
+                results: editsResult.updateFeatureResults
+              }, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error occurred',
+                details: 'Failed to update point geometry'
+              }, null, 2)
+            }
+          ]
+        };
+      }
     }
   );
 
