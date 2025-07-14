@@ -4,6 +4,7 @@
   "type": "module",
   "description": "A Model Context Protocol (MCP) server for ArcGIS Online integration with comprehensive CRUD operations for spatial data",
   "main": "dist/index.js",
+  "module": "./src/smithery.ts",
   "bin": {
     "arcgisonline-mcp-server": "dist/index.js"
   },
