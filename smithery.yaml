@@ -1,1 +1,11 @@
 runtime: "typescript"
+startCommand:
+  type: "http"
+  configSchema:
+    type: "object"
+    properties:
+      apiKey:
+        type: "string"
+        title: "ArcGIS Online API Key"
+        description: "Your ArcGIS Online API key for authentication"
+    required: []
