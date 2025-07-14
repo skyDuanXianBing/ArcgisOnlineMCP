@@ -17,11 +17,14 @@ export function createServer(): McpServer {
     'query',
     'query Arcgis Online FeatureLayer Element',
     {
-      url: z.string().describe('url'),
-      apikey: z.string().describe('api key'),
-      where: z.string().default("1=1").describe('where'),
+      url: z.string().describe('FeatureLayer URL'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
+      where: z.string().default("1=1").describe('SQL WHERE clause for filtering features'),
     },
     async ({ url, apikey, where }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey
       const featureLayer = new FeatureLayer({
         url: url,
@@ -61,11 +64,14 @@ export function createServer(): McpServer {
     'Update only the attributes of an existing feature in an ArcGIS Online FeatureLayer',
     {
       url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
       objectId: z.number().describe('Object ID of the feature to update'),
       attributes: z.record(z.any()).describe('Updated feature attributes')
     },
     async ({ url, apikey, objectId, attributes }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey;
       const featureLayer = new FeatureLayer({
         url: url,
@@ -105,13 +111,16 @@ export function createServer(): McpServer {
     'Update only the geometry of an existing point feature using latitude and longitude',
     {
       url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
       objectId: z.number().describe('Object ID of the feature to update'),
       latitude: z.number().describe('Latitude (Y coordinate)'),
       longitude: z.number().describe('Longitude (X coordinate)'),
       wkid: z.number().default(4326).describe('Spatial reference WKID (default: 4326 WGS84)')
     },
     async ({ url, apikey, objectId, latitude, longitude, wkid }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey;
       const featureLayer = new FeatureLayer({
         url: url,
@@ -157,7 +166,7 @@ export function createServer(): McpServer {
     'Update only the geometry of an existing line feature using an array of coordinates',
     {
       url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
       objectId: z.number().describe('Object ID of the feature to update'),
       coordinates: z.array(
         z.object({
@@ -168,6 +177,9 @@ export function createServer(): McpServer {
       wkid: z.number().default(4326).describe('Spatial reference WKID (default: 4326 WGS84)')
     },
     async ({ url, apikey, objectId, coordinates, wkid }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey;
       const featureLayer = new FeatureLayer({
         url: url,
@@ -215,7 +227,7 @@ export function createServer(): McpServer {
     'Update only the geometry of an existing polygon feature using an array of coordinates',
     {
       url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
       objectId: z.number().describe('Object ID of the feature to update'),
       coordinates: z.array(
         z.object({
@@ -226,6 +238,9 @@ export function createServer(): McpServer {
       wkid: z.number().default(4326).describe('Spatial reference WKID (default: 4326 WGS84)')
     },
     async ({ url, apikey, objectId, coordinates, wkid }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey;
       const featureLayer = new FeatureLayer({
         url: url,
@@ -283,10 +298,13 @@ export function createServer(): McpServer {
     'Delete a feature from an ArcGIS Online FeatureLayer',
     {
       url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
       objectId: z.number().describe('Object ID of the feature to delete')
     },
     async ({ url, apikey, objectId }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey;
       const featureLayer = new FeatureLayer({
         url: url,
@@ -324,13 +342,16 @@ export function createServer(): McpServer {
     'Add a new point feature to an ArcGIS Online FeatureLayer using latitude and longitude',
     {
       url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
       attributes: z.record(z.any()).describe('Feature attributes'),
       latitude: z.number().describe('Latitude (Y coordinate)'),
       longitude: z.number().describe('Longitude (X coordinate)'),
       wkid: z.number().default(4326).describe('Spatial reference WKID (default: 4326 WGS84)')
     },
     async ({ url, apikey, attributes, latitude, longitude, wkid }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey;
       const featureLayer = new FeatureLayer({
         url: url,
@@ -374,7 +395,7 @@ export function createServer(): McpServer {
     'Add a new line feature to an ArcGIS Online FeatureLayer using an array of coordinates',
     {
       url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
       attributes: z.record(z.any()).describe('Feature attributes'),
       coordinates: z.array(
         z.object({
@@ -385,6 +406,9 @@ export function createServer(): McpServer {
       wkid: z.number().default(4326).describe('Spatial reference WKID (default: 4326 WGS84)')
     },
     async ({ url, apikey, attributes, coordinates, wkid }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey;
       const featureLayer = new FeatureLayer({
         url: url,
@@ -430,7 +454,7 @@ export function createServer(): McpServer {
     'Add a new polygon feature to an ArcGIS Online FeatureLayer using an array of coordinates',
     {
       url: z.string().describe('Feature layer URL'),
-      apikey: z.string().describe('API key'),
+      apikey: z.string().optional().describe('ArcGIS Online API key (required for execution)'),
       attributes: z.record(z.any()).describe('Feature attributes'),
       coordinates: z.array(
         z.object({
@@ -441,6 +465,9 @@ export function createServer(): McpServer {
       wkid: z.number().default(4326).describe('Spatial reference WKID (default: 4326 WGS84)')
     },
     async ({ url, apikey, attributes, coordinates, wkid }) => {
+      if (!apikey) {
+        throw new Error('API key is required for executing this tool');
+      }
       esriConfig.apiKey = apikey;
       const featureLayer = new FeatureLayer({
         url: url,
